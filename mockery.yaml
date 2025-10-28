@@ -1,0 +1,13 @@
+log-level: ""
+issue-845-fix: true
+resolve-type-alias: false
+disable-version-string: true
+packages:
+  cruder/internal/repository:
+    interfaces:
+      UserRepository:
+        case: underscore
+        filename: user_repository_mock.go
+        outpkg: mocks
+        output: internal/service/mocks
+        structname: UserRepositoryMock

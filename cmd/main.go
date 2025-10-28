@@ -1,14 +1,10 @@
 package main
 
 import (
-	"cruder/internal/controller"
-	"cruder/internal/handler"
-	"cruder/internal/repository"
-	"cruder/internal/service"
 	"log"
 	"os"
 
-	"github.com/gin-gonic/gin"
+	"cruder/internal/app"
 )
 
 func main() {
@@ -18,17 +14,17 @@ func main() {
 		return
 	}
 
-	dbConn, err := repository.NewPostgresConnection(dsn)
+	application, err := app.New(dsn)
 	if err != nil {
-		log.Fatalf("failed to connect to database: %v", err)
+		log.Fatalf("failed to initialize application: %v", err)
 	}
+	defer func() {
+		if err := application.Close(); err != nil {
+			log.Printf("failed to close application cleanly: %v", err)
+		}
+	}()
 
-	repositories := repository.NewRepository(dbConn.DB())
-	services := service.NewService(repositories)
-	controllers := controller.NewController(services)
-	r := gin.Default()
-	handler.New(r, controllers.Users)
-	if err := r.Run(); err != nil {
+	if err := application.Engine.Run(); err != nil {
 		log.Fatalf("failed to run server: %v", err)
 	}
 }

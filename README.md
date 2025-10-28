@@ -23,34 +23,58 @@ POSTGRES_PORT=port (5432 is default)
 POSTGRES_SSL_MODE=see postgres for available modes (e.g. disable|require)
 ```
 
-## How to run 
+## Development workflow
 
-1. Start database
+### Install dependencies
 
+```bash
+go mod download
 ```
-## Via Makefile
+
+### Start Postgres
+
+```bash
+# via Makefile
 make db
 
-## Via Docker
+# or directly with Docker Compose
 docker-compose up -d db
 ```
 
-2. Run migrations
+### Apply migrations
 
-```
-## Via Makefile
+```bash
+# using the Makefile shortcut
 make migrate-up
 
-## Via Goose
-DB_DRIVER=postgres
-DB_STRING="host=localhost port=5432 user=postgres password=postgres dbname=postgres sslmode=disable"
+# or directly with goose
+DB_DRIVER=postgres \
+DB_STRING="host=localhost port=5432 user=postgres password=postgres dbname=postgres sslmode=disable" \
 goose -dir ./migrations $(DB_DRIVER) $(DB_STRING) up
 ```
 
-3. Run application
+### Run the service
 
-```
+```bash
 make run
+```
+
+### Run tests
+
+Mocks are generated automatically through `go generate` (the Makefile does this for you):
+
+```bash
+make test               # unit suite
+make test-integration   # integration suite (requires Docker)
+```
+
+### Coverage reports
+
+```bash
+make coverage                  # unit coverage summary (coverage-unit.out)
+make coverage-html             # opens HTML report for unit coverage
+make coverage-integration      # integration coverage summary (coverage-integration.out)
+make coverage-integration-html # opens HTML report for integration coverage
 ```
 
 ## API Endpoints
