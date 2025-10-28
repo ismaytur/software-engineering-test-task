@@ -58,5 +58,11 @@ make run
 - `GET /api/v1/users/` - List all users.
 - `GET /api/v1/users/username/{username}` - Retrieve a user by username.
 - `GET /api/v1/users/id/{id}` - Retrieve a user by numeric ID.
+- `GET /api/v1/users/uuid/{uuid}` - Retrieve a user by UUID.
+- `POST /api/v1/users/` - Create a new user.
+- `PATCH /api/v1/users/uuid/{uuid}` - Update an existing user by UUID.
+- `DELETE /api/v1/users/uuid/{uuid}` - Remove a user by UUID.
+- `PATCH /api/v1/users/id/{id}` - Update an existing user by numeric ID.
+- `DELETE /api/v1/users/id/{id}` - Remove a user by numeric ID.
 
 OpenAPI documentation (Swagger): [`./docs/swagger.json`](docs/swagger.json)

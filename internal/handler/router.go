@@ -14,6 +14,12 @@ func New(router *gin.Engine, userController *controller.UserController) *gin.Eng
 			userGroup.GET("/", userController.GetAllUsers)
 			userGroup.GET("/username/:username", userController.GetUserByUsername)
 			userGroup.GET("/id/:id", userController.GetUserByID)
+			userGroup.GET("/uuid/:uuid", userController.GetUserByUUID)
+			userGroup.POST("/", userController.CreateUser)
+			userGroup.PATCH("/uuid/:uuid", userController.UpdateUserByUUID)
+			userGroup.PATCH("/id/:id", userController.UpdateUserByID)
+			userGroup.DELETE("/uuid/:uuid", userController.DeleteUserByUUID)
+			userGroup.DELETE("/id/:id", userController.DeleteUserByID)
 		}
 	}
 	return router
