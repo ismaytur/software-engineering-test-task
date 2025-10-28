@@ -34,7 +34,7 @@ coverage-html:
 
 validate: lint security test
 
-run:
+run: swagger
 	go run cmd/main.go
 
 db:
@@ -55,6 +55,6 @@ create-migration:
 	goose -dir ./migrations create $$name sql
 
 swagger:
-	swag init -g ./cmd/api/v1/main.go -o ./docs
+	swag init -g ./cmd/main.go -o ./docs
 
-.PHONY: run db up down restart migrate-up migrate-down migrate-status migrate-reset
+.PHONY: run db up down restart migrate-up migrate-down migrate-status migrate-reset swagger

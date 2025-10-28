@@ -52,3 +52,11 @@ goose -dir ./migrations $(DB_DRIVER) $(DB_STRING) up
 ```
 make run
 ```
+
+## API Endpoints
+
+- `GET /api/v1/users/` - List all users.
+- `GET /api/v1/users/username/{username}` - Retrieve a user by username.
+- `GET /api/v1/users/id/{id}` - Retrieve a user by numeric ID.
+
+OpenAPI documentation (Swagger): [`./docs/swagger.json`](docs/swagger.json)

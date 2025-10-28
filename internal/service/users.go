@@ -3,7 +3,10 @@ package service
 import (
 	"cruder/internal/model"
 	"cruder/internal/repository"
+	"errors"
 )
+
+var ErrUserNotFound = errors.New("user not found")
 
 type UserService interface {
 	GetAll() ([]model.User, error)
@@ -20,13 +23,34 @@ func NewUserService(repo repository.UserRepository) UserService {
 }
 
 func (s *userService) GetAll() ([]model.User, error) {
-	return s.repo.GetAll()
+	users, err := s.repo.GetAll()
+	if err != nil {
+		return nil, err
+	}
+	if users == nil {
+		return []model.User{}, nil
+	}
+	return users, nil
 }
 
 func (s *userService) GetByUsername(username string) (*model.User, error) {
-	return s.repo.GetByUsername(username)
+	user, err := s.repo.GetByUsername(username)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, ErrUserNotFound
+	}
+	return user, nil
 }
 
 func (s *userService) GetByID(id int64) (*model.User, error) {
-	return s.repo.GetByID(id)
+	user, err := s.repo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, ErrUserNotFound
+	}
+	return user, nil
 }
