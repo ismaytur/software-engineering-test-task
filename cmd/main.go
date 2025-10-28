@@ -14,7 +14,8 @@ import (
 func main() {
 	dsn := os.Getenv("POSTGRES_DSN")
 	if dsn == "" {
-		dsn = "host=localhost port=5432 user=postgres password=postgres dbname=postgres sslmode=disable"
+		log.Fatal("No postgres DSN is defined, exiting")
+		return
 	}
 
 	dbConn, err := repository.NewPostgresConnection(dsn)
