@@ -1,4 +1,4 @@
-include .env
+-include .env
 
 DB_DRIVER = postgres
 POSTGRES_DSN = host=${POSTGRES_HOST} port=${POSTGRES_PORT} user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB} sslmode=${POSTGRES_SSL_MODE}
