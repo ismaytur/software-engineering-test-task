@@ -1,92 +1,114 @@
 # Simple CRUD Interface
 
-This is a simple CRUD application
+REST API that manages users.
 
 ## Prerequisites
 
-1. Tools
 - [Docker](https://www.docker.com/get-started/)
 - [Go](https://go.dev/dl/)
-- [Goose](https://github.com/pressly/goose)
+- Make
 
-2. Environment variables
+## Environment configuration
 
-Create `.env` file in main directory with the following template:
+Create a `.env` file in the repository as the sample below.
 
+```env
+# Postgres
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=postgres
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_SSL_MODE=disable
 ```
-## Postgres
-POSTGRES_USER=postgres user name
-POSTGRES_PASSWORD=postgres password
-POSTGRES_DB=postgres database name
-POSTGRES_HOST=host name
-POSTGRES_PORT=port (5432 is default)
-POSTGRES_SSL_MODE=see postgres for available modes (e.g. disable|require)
-```
 
-## Development workflow
+## Makefile quick reference
 
-### Install dependencies
+Run `make help` any time to list all targets and descriptions. Common workflows are summarized below.
+
+### One-time setup
 
 ```bash
-go mod download
+make install      # install modules and needed tools 
 ```
 
-### Start Postgres
+### Local development
 
 ```bash
-# via Makefile
-make db
-
-# or directly with Docker Compose
-docker-compose up -d db
+make validate     # generate mocks + go vet + staticcheck + gosec + unit tests
+make run          # run the HTTP server locally (uses .env DSN)
+make swagger      # regenerate docs in ./docs
 ```
 
-### Apply migrations
+### Testing
 
 ```bash
-# using the Makefile shortcut
-make migrate-up
+make test                 # unit tests (TEST_ARGS overrides are supported)
+make test-integration     # integration tests (requires Docker)
 
-# or directly with goose
-DB_DRIVER=postgres \
-DB_STRING="host=localhost port=5432 user=postgres password=postgres dbname=postgres sslmode=disable" \
-goose -dir ./migrations $(DB_DRIVER) $(DB_STRING) up
+make coverage             # unit coverage -> coverage/unit.out
+make coverage-html        # open HTML report for unit coverage
+make coverage-integration # integration coverage -> coverage/integration.out
 ```
 
-### Run the service
+### Database migrations
 
 ```bash
-make run
+make migrate-up           # apply all migrations
+make migrate-down         # roll back the last migration
+make migrate-status       # show applied migration status
+make create-migration     # interactive prompt, generates empty SQL file
 ```
 
-### Run tests
+All migrations run through `goose` and reuse the DSN defined in `.env`.
 
-Mocks are generated automatically through `go generate` (the Makefile does this for you):
+### Docker workflow
 
 ```bash
-make test               # unit suite
-make test-integration   # integration suite (requires Docker)
+make app                  # cross-compile for container + docker-compose up app
+make db                   # start postgres container only
+make up                   # build and run full compose stack
+make down                 # stop and remove compose services
 ```
 
-### Coverage reports
+The `app` target cross-compiles the binary for Linux using `APP_GOOS`/`APP_GOARCH` (defaults to the host architecture). Override if you need a different image target, e.g. `APP_GOARCH=amd64 make app`.
+
+### Housekeeping
 
 ```bash
-make coverage                  # unit coverage summary (coverage-unit.out)
-make coverage-html             # opens HTML report for unit coverage
-make coverage-integration      # integration coverage summary (coverage-integration.out)
-make coverage-integration-html # opens HTML report for integration coverage
+make clean                # remove bin/, coverage/, generated mocks
 ```
 
-## API Endpoints
+## Project structure
 
-- `GET /api/v1/users/` - List all users.
-- `GET /api/v1/users/username/{username}` - Retrieve a user by username.
-- `GET /api/v1/users/id/{id}` - Retrieve a user by numeric ID.
-- `GET /api/v1/users/uuid/{uuid}` - Retrieve a user by UUID.
-- `POST /api/v1/users/` - Create a new user.
-- `PATCH /api/v1/users/uuid/{uuid}` - Update an existing user by UUID.
-- `DELETE /api/v1/users/uuid/{uuid}` - Remove a user by UUID.
-- `PATCH /api/v1/users/id/{id}` - Update an existing user by numeric ID.
-- `DELETE /api/v1/users/id/{id}` - Remove a user by numeric ID.
+```
+cmd/                 # application entrypoint
+internal/app         # application bootstrap (DI, router wiring)
+internal/controller  # HTTP controllers
+internal/handler     # gin route definitions
+internal/repository  # persistence layer
+internal/service     # business logic (unit/integration tests live here)
+migrations/          # goose SQL migrations
+docs/                # Swagger artifacts
+docker/entrypoint.sh # runtime DSN assembly for container builds
+```
 
-OpenAPI documentation (Swagger): [`./docs/swagger.json`](docs/swagger.json)
+## API endpoints
+
+- `GET /api/v1/users/` – list all users
+- `GET /api/v1/users/username/{username}` – fetch by username
+- `GET /api/v1/users/id/{id}` – fetch by numeric ID
+- `GET /api/v1/users/uuid/{uuid}` – fetch by UUID
+- `POST /api/v1/users/` – create user
+- `PATCH /api/v1/users/uuid/{uuid}` – update by UUID
+- `PATCH /api/v1/users/id/{id}` – update by ID
+- `DELETE /api/v1/users/uuid/{uuid}` – delete by UUID
+- `DELETE /api/v1/users/id/{id}` – delete by ID
+
+Base URL defaults to `http://localhost:8080` when running via `make run` or `make app`.
+
+### Swagger / OpenAPI
+
+- JSON: `docs/swagger.json`
+- YAML: `docs/swagger.yaml`
+- Generated with `make swagger` (uses `swag init -g ./cmd/main.go`)

@@ -1,6 +1,6 @@
 package service
 
-//go:generate go run github.com/vektra/mockery/v2@latest --config=../../mockery.yaml
+//go:generate sh -c "cd ../.. && mockery --config=mockery.yaml"
 
 import (
 	"errors"

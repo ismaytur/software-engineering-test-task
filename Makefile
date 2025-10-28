@@ -1,91 +1,135 @@
 include .env
 
-DB_DRIVER=postgres
-POSTGRES_DSN=host=${POSTGRES_HOST} port=${POSTGRES_PORT} user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB} sslmode=${POSTGRES_SSL_MODE}
+DB_DRIVER = postgres
+POSTGRES_DSN = host=${POSTGRES_HOST} port=${POSTGRES_PORT} user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB} sslmode=${POSTGRES_SSL_MODE}
 
 export POSTGRES_DSN
+export GO ?= go
+export GOPROXY ?= https://proxy.golang.org,direct
+export GOBIN ?= $(shell $(GO) env GOPATH)/bin
+export PATH := $(GOBIN):$(PATH)
 
-TEST_PKGS:=$(shell go list -f '{{if or .TestGoFiles .XTestGoFiles}}{{.ImportPath}}{{end}}' ./...)
-COVERAGE_UNIT:=coverage-unit.out
-COVERAGE_INT:=coverage-integration.out
+HOST_GOOS := $(shell $(GO) env GOOS)
+HOST_GOARCH := $(shell $(GO) env GOARCH)
+APP_GOOS ?= linux
+APP_GOARCH ?= $(HOST_GOARCH)
 
-define run_go_test
-	go test $(1) -count=1 $(TEST_PKGS)
-endef
+BIN_DIR := bin
+BIN_HOST := $(BIN_DIR)/server.$(HOST_GOOS)-$(HOST_GOARCH)
+BIN_APP := $(BIN_DIR)/server.$(APP_GOOS)-$(APP_GOARCH)
+BIN_MAIN := $(BIN_DIR)/server
+BUILD_MAIN := ./cmd/main.go
 
-migrate-up:
-	goose -dir ./migrations $(DB_DRIVER) "$(POSTGRES_DSN)" up
+COVERAGE_DIR := coverage
+COVERAGE_UNIT := $(COVERAGE_DIR)/unit.out
+COVERAGE_INT := $(COVERAGE_DIR)/integration.out
 
-migrate-down:
-	goose -dir ./migrations $(DB_DRIVER) "$(POSTGRES_DSN)" down
+TEST_PKGS := $(shell $(GO) list -f '{{if or .TestGoFiles .XTestGoFiles}}{{.ImportPath}}{{end}}' ./...)
+TEST_ARGS ?=
+DOCKER_COMPOSE ?= docker-compose
+GOSEC_BIN := $(GOBIN)/gosec
+SWAG_BIN := $(GOBIN)/swag
+GOOSE_BIN := $(GOBIN)/goose
+STATICCHECK_BIN := $(GOBIN)/staticcheck
+STATICCHECK_DIRS := $(shell $(GO) list -f '{{.Dir}}' ./...)
 
-migrate-status:
-	goose -dir ./migrations $(DB_DRIVER) "$(POSTGRES_DSN)" status
+.DEFAULT_GOAL := help
 
-migrate-reset:
-	goose -dir ./migrations $(DB_DRIVER) "$(POSTGRES_DSN)" reset
+help:
+	@awk 'BEGIN {FS = ":.*##"; printf "Targets:\n"} /^[a-zA-Z0-9_.%-]+:.*##/ {printf "  %-24s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-lint:
-	golangci-lint run ./...
+install: 
+	$(GO) mod tidy 
+	$(GO) mod download
+	$(GO) install github.com/securego/gosec/v2/cmd/gosec@latest
+	$(GO) install github.com/swaggo/swag/cmd/swag@latest
+	$(GO) install github.com/vektra/mockery/v2@latest
+	$(GO) install github.com/pressly/goose/v3/cmd/goose@v3.26.0
+	$(GO) install honnef.co/go/tools/cmd/staticcheck@latest
 
-security:
-	gosec -exclude-dir=bin/database ./...
+generate: | install
+	$(GO) generate ./...
 
-generate:
-	go generate ./...
+lint: install generate
+	$(GO) vet ./...
+	@for dir in $(STATICCHECK_DIRS); do \
+		$(STATICCHECK_BIN) "$$dir" || exit $$?; \
+	done
 
-install:
-	go mod download
-	go install github.com/vektra/mockery/v2@latest
+security: install generate
+	$(GOSEC_BIN) -exclude-dir=bin/database ./...
 
-clean:
-	rm -rf coverage-*.out internal/service/mocks
-
-coverage: generate
-	rm -f $(COVERAGE_UNIT)
-	$(call run_go_test,-coverprofile=$(COVERAGE_UNIT))
-	go tool cover -func=$(COVERAGE_UNIT)
-
-coverage-html: coverage
-	go tool cover -html=$(COVERAGE_UNIT)
-
-coverage-integration: generate
-	rm -f $(COVERAGE_INT)
-	$(call run_go_test,-tags=integration -coverprofile=$(COVERAGE_INT))
-	go tool cover -func=$(COVERAGE_INT)
-
-coverage-integration-html: coverage-integration
-	go tool cover -html=$(COVERAGE_INT)
+test: install generate 
+	$(GO) test -count=1 $(TEST_ARGS) $(TEST_PKGS)
 
 validate: lint security test
 
-run: swagger
-	go run cmd/main.go
+test-integration: install generate 
+	$(GO) test -count=1 -tags=integration $(TEST_ARGS) $(TEST_PKGS)
 
-test: generate
-	$(call run_go_test,)
+coverage: generate 
+	@mkdir -p $(COVERAGE_DIR)
+	rm -f $(COVERAGE_UNIT)
+	$(GO) test -count=1 -coverprofile=$(COVERAGE_UNIT) $(TEST_ARGS) $(TEST_PKGS)
+	$(GO) tool cover -func=$(COVERAGE_UNIT)
 
-test-integration: generate
-	$(call run_go_test,-tags=integration)
+coverage-html: coverage
+	$(GO) tool cover -html=$(COVERAGE_UNIT)
+
+coverage-integration: generate
+	@mkdir -p $(COVERAGE_DIR)
+	rm -f $(COVERAGE_INT)
+	$(GO) test -count=1 -tags=integration -coverprofile=$(COVERAGE_INT) $(TEST_ARGS) $(TEST_PKGS)
+	$(GO) tool cover -func=$(COVERAGE_INT)
+
+coverage-integration-html: coverage-integration 
+	$(GO) tool cover -html=$(COVERAGE_INT)
+
+build: validate
+	@mkdir -p $(BIN_DIR)
+	CGO_ENABLED=0 GOOS=$(HOST_GOOS) GOARCH=$(HOST_GOARCH) $(GO) build -o $(BIN_HOST) $(BUILD_MAIN)
+	@cp $(BIN_HOST) $(BIN_MAIN)
+
+build-container: validate
+	@mkdir -p $(BIN_DIR)
+	CGO_ENABLED=0 GOOS=$(APP_GOOS) GOARCH=$(APP_GOARCH) $(GO) build -o $(BIN_APP) $(BUILD_MAIN)
+	@cp $(BIN_APP) $(BIN_MAIN)
+
+app: build-container
+	$(DOCKER_COMPOSE) up -d --build app
+
+run: generate
+	$(GO) run $(BUILD_MAIN)
 
 db:
-	docker-compose up -d db
+	$(DOCKER_COMPOSE) up -d db
 
 up:
-	docker-compose up --build
+	$(DOCKER_COMPOSE) up --build
 
 down:
-	docker-compose down
+	$(DOCKER_COMPOSE) down
 
-restart:
-	docker-compose down
-	docker-compose up --build
+restart: 
+	$(DOCKER_COMPOSE) down
+	$(DOCKER_COMPOSE) up --build
 
-create-migration:
+migrate-%: install 
+	$(GOOSE_BIN) -dir ./migrations $(DB_DRIVER) "$(POSTGRES_DSN)" $*
+
+create-migration: install 
 	@read -p "Enter migration name: " name; \
-	goose -dir ./migrations create $$name sql
+	$(GOOSE_BIN) -dir ./migrations create $$name sql
 
-swagger:
-	swag init -g ./cmd/main.go -o ./docs
+swagger: install
+	$(SWAG_BIN) init -g ./cmd/main.go -o ./docs
 
-.PHONY: run db up down restart migrate-up migrate-down migrate-status migrate-reset swagger test test-integration lint security generate coverage coverage-html coverage-integration coverage-integration-html validate
+clean: 
+	rm -rf $(BIN_DIR) $(COVERAGE_DIR) internal/service/mocks
+
+PHONY_TARGETS := \
+	help install generate lint security test check test-integration coverage coverage-html \
+	coverage-integration coverage-integration-html build build-container app run \
+	validate db up down restart migrate-% create-migration swagger clean
+
+.PHONY: $(PHONY_TARGETS)

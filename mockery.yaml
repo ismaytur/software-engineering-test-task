@@ -4,10 +4,12 @@ resolve-type-alias: false
 disable-version-string: true
 packages:
   cruder/internal/repository:
+    config:
+      dir: internal/service/mocks
+      outpkg: mocks
     interfaces:
       UserRepository:
-        case: underscore
-        filename: user_repository_mock.go
-        outpkg: mocks
-        output: internal/service/mocks
-        structname: UserRepositoryMock
+        config:
+          filename: user_repository_mock.go
+          mockname: UserRepositoryMock
+          with-expecter: true

@@ -1,4 +1,6 @@
 .env
 postgres_data
-internal/service/mocks/
-coverage-*.out
+**/mocks/
+**/*_mock.go
+coverage/
+bin/
