@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"cruder/internal/app"
+	"cruder/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
@@ -74,6 +75,9 @@ func TestMain(m *testing.M) {
 	}
 
 	gin.SetMode(gin.TestMode)
+	if _, err := logger.Configure(logger.Options{Output: logger.OutputStdout, Level: "info"}); err != nil {
+		log.Printf("failed to configure test logger: %v", err)
+	}
 	testApp, err = app.New(dsn)
 	if err != nil {
 		log.Fatalf("failed to initialize application: %v", err)

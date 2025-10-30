@@ -20,6 +20,11 @@ POSTGRES_DB=postgres
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 POSTGRES_SSL_MODE=disable
+
+# Logging (optional overrides)
+LOG_OUTPUT=stdout             # stdout | file | both
+# LOG_FILE=/var/log/app.json  # required when LOG_OUTPUT includes file
+LOG_LEVEL=info                # debug | info | warn | error
 ```
 
 ## Makefile quick reference
@@ -92,6 +97,16 @@ migrations/          # goose SQL migrations
 docs/                # Swagger artifacts
 docker/entrypoint.sh # runtime DSN assembly for container builds
 ```
+
+## Structured logging
+
+- The app uses `log/slog` with JSON output by default.
+- Configure via environment variables:
+  - `LOG_OUTPUT`: `stdout` (default), `file`, or `both`.
+  - `LOG_FILE`: absolute path used when `LOG_OUTPUT` is `file` or `both`; directories are created with 0700 permissions.
+  - `LOG_LEVEL`: `debug`, `info` (default), `warn`, or `error`.
+- HTTP requests automatically produce structured logs with timing, status, method, route, and request IDs.
+- Services and repositories emit contextual logs 
 
 ## API endpoints
 

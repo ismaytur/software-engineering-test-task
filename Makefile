@@ -4,6 +4,9 @@ DB_DRIVER = postgres
 POSTGRES_DSN = host=${POSTGRES_HOST} port=${POSTGRES_PORT} user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB} sslmode=${POSTGRES_SSL_MODE}
 
 export POSTGRES_DSN
+export LOG_OUTPUT
+export LOG_FILE
+export LOG_LEVEL
 export GO ?= go
 export GOPROXY ?= https://proxy.golang.org,direct
 export GOBIN ?= $(shell $(GO) env GOPATH)/bin
