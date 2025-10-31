@@ -3,6 +3,8 @@ package app
 import (
 	"fmt"
 	"log/slog"
+	"os"
+	"time"
 
 	"cruder/internal/controller"
 	"cruder/internal/handler"
@@ -44,13 +46,15 @@ func New(dsn string) (*App, error) {
 	appLogger.Info("database connection established")
 
 	repos := repository.NewRepository(dbConn.DB())
-	services := service.NewService(repos)
+	apiKeyTTL := parseAPIKeyTTL(appLogger)
+	services := service.NewService(repos, apiKeyTTL)
 	controllers := controller.NewController(services)
 
 	router := gin.New()
 	router.Use(
 		middleware.Recovery(appLogger),
 		middleware.RequestLogger(appLogger),
+		middleware.APIKeyAuth(services.APIKeys, baseLogger),
 	)
 	handler.New(router, controllers.Users)
 	appLogger.Info("http router configured")
@@ -70,4 +74,21 @@ func (a *App) Close() error {
 
 	a.Logger.Info("closing database connection")
 	return a.conn.DB().Close()
+}
+
+func parseAPIKeyTTL(log *logger.Logger) time.Duration {
+	value := os.Getenv("API_KEY_CACHE_TTL")
+	if value == "" {
+		return 5 * time.Minute
+	}
+	ttl, err := time.ParseDuration(value)
+	if err != nil {
+		log.Warn("invalid API_KEY_CACHE_TTL, using default", slog.String("value", value), slog.String("error", err.Error()))
+		return 5 * time.Minute
+	}
+	if ttl <= 0 {
+		log.Warn("non-positive API_KEY_CACHE_TTL, using default", slog.String("value", value))
+		return 5 * time.Minute
+	}
+	return ttl
 }

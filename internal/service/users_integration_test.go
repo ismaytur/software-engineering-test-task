@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"testing"
 
+	"cruder/internal/middleware"
 	"cruder/internal/service"
 
 	"github.com/go-resty/resty/v2"
@@ -240,5 +241,6 @@ func createUser(t *testing.T, username, email, fullName string) userResponse {
 var httpClient = resty.New()
 
 func restyClient() *resty.Client {
-	return httpClient.SetBaseURL(apiBaseURL)
+	return httpClient.SetBaseURL(apiBaseURL).
+		SetHeader(middleware.HeaderAPIKey, testAPIKey)
 }

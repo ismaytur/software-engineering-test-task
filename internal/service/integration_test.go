@@ -4,7 +4,9 @@ package service_test
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
@@ -31,6 +33,8 @@ var (
 	apiBaseURL string
 	dsn        string
 )
+
+const testAPIKey = "integration-test-api-key"
 
 func TestMain(m *testing.M) {
 	pool, err := dockertest.NewPool("")
@@ -72,6 +76,10 @@ func TestMain(m *testing.M) {
 
 	if err := runMigrations(testDB); err != nil {
 		log.Fatalf("failed to run migrations: %v", err)
+	}
+
+	if err := seedAPIKey(testDB, testAPIKey, "integration-test-client"); err != nil {
+		log.Fatalf("failed to seed api key: %v", err)
 	}
 
 	gin.SetMode(gin.TestMode)
@@ -128,6 +136,16 @@ func seedUsers() error {
 		}
 	}
 	return nil
+}
+
+func seedAPIKey(db *sql.DB, plainKey, clientName string) error {
+	hash := sha256.Sum256([]byte(plainKey))
+	hashHex := hex.EncodeToString(hash[:])
+	_, err := db.Exec(
+		`INSERT INTO api_keys (key_hash, client_name) VALUES ($1, $2) ON CONFLICT (key_hash) DO NOTHING`,
+		hashHex, clientName,
+	)
+	return err
 }
 
 func runMigrations(db *sql.DB) error {

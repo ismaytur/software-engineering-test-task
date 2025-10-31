@@ -25,6 +25,7 @@ POSTGRES_SSL_MODE=disable
 LOG_OUTPUT=stdout             # stdout | file | both
 # LOG_FILE=/var/log/app.json  # required when LOG_OUTPUT includes file
 LOG_LEVEL=info                # debug | info | warn | error
+API_KEY_CACHE_TTL=5m          # duration for in-memory API key cache
 ```
 
 ## Makefile quick reference
@@ -107,6 +108,12 @@ docker/entrypoint.sh # runtime DSN assembly for container builds
   - `LOG_LEVEL`: `debug`, `info` (default), `warn`, or `error`.
 - HTTP requests automatically produce structured logs with timing, status, method, route, and request IDs.
 - Services and repositories emit contextual logs 
+
+## API key authentication
+
+- All HTTP calls must include `X-API-Key`. Missing keys return `401 Unauthorized`; invalid keys return `403 Forbidden`.
+- Keys are stored (sha256sum hashed) in `api_keys`. Insert new keys manually.
+- Lookups are cached in-memory for `API_KEY_CACHE_TTL` to reduce database traffic.
 
 ## API endpoints
 
